@@ -32,6 +32,26 @@ export async function sendOrganizationInviteEmail(params: {
   });
 }
 
+export async function sendOrganizationInviteEmailToAddress(params: {
+  to: string;
+  organizationName: string;
+  invitedByName?: string;
+  inviteLink: string;
+}) {
+  const template = inviteMemberEmailTemplate({
+    inviteLink: params.inviteLink,
+    organizationName: params.organizationName,
+    invitedByName: params.invitedByName,
+  });
+
+  await sendEmail({
+    to: params.to,
+    subject: `You're invited to ${params.organizationName}`,
+    html: template.html,
+    text: template.text,
+  });
+}
+
 export async function sendStudySharedEmail(params: {
   invitedUserId: string;
   studyName: string;

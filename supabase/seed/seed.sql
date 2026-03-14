@@ -95,6 +95,11 @@ begin
   set name = excluded.name, created_by = excluded.created_by, updated_at = now(), deleted_at = null
   returning id into v_org_partner;
 
+  insert into public.organizations (name, slug, created_by, created_at, updated_at)
+  values ('Open Clinical Sandbox', 'open-clinical-sandbox', u_owner, v_now - interval '90 days', v_now)
+  on conflict (slug) do update
+  set name = excluded.name, created_by = excluded.created_by, updated_at = now(), deleted_at = null;
+
   with membership_seed as (
     select *
     from (

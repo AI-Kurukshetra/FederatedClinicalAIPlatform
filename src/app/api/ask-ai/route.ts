@@ -1,7 +1,7 @@
 ﻿import { z } from 'zod';
 import { fail, ok } from '@/lib/api/response';
 import { requireAuth } from '@/lib/api/auth';
-import { serverEnv, requireOpenAiKey } from '@/lib/config/env.server';
+import { serverEnv, requireGeminiKey, requireOpenAiKey } from '@/lib/config/env.server';
 import { getPrimaryOrgContext } from '@/server/services/org-context';
 
 type ContextDoc = {
@@ -44,6 +44,8 @@ type OpenAiMessage = {
   role: 'system' | 'user' | 'assistant';
   content: string;
 };
+
+type AskAiProvider = 'openai' | 'gemini';
 
 const askAiRequestSchema = z.object({
   question: z.string().trim().min(4).max(2000),
@@ -204,16 +206,72 @@ Hard constraints:
 - Keep outputs concise and operational.
 - Do not produce markdown. Return valid JSON only.`;
 
-const DEFAULT_ASK_AI_MODELS = ['gpt-4.1-mini', 'gpt-4.1', 'gpt-5-mini', 'gpt-5'] as const;
+const DEFAULT_OPENAI_ASK_AI_MODELS = ['gpt-4.1-mini', 'gpt-4.1', 'gpt-5-mini', 'gpt-5'] as const;
+const DEFAULT_GEMINI_ASK_AI_MODELS = ['gemini-2.0-flash', 'gemini-2.0-flash-lite'] as const;
 
-function getAskAiModelOptions() {
-  const configured = (serverEnv.OPENAI_ASK_AI_MODELS ?? '')
+function splitConfiguredModels(value: string | undefined) {
+  return (value ?? '')
     .split(',')
     .map((item) => item.trim())
     .filter(Boolean);
+}
 
-  const models = configured.length > 0 ? Array.from(new Set(configured)) : [...DEFAULT_ASK_AI_MODELS];
-  const defaultModel = serverEnv.OPENAI_MODEL && models.includes(serverEnv.OPENAI_MODEL) ? serverEnv.OPENAI_MODEL : models[0];
+function formatModelOption(provider: AskAiProvider, model: string) {
+  return `${provider}/${model}`;
+}
+
+function parseModelOption(modelOption: string): { provider: AskAiProvider; model: string } | null {
+  const trimmed = modelOption.trim();
+  if (!trimmed) return null;
+
+  if (trimmed.startsWith('openai/')) {
+    const model = trimmed.slice('openai/'.length).trim();
+    return model ? { provider: 'openai', model } : null;
+  }
+
+  if (trimmed.startsWith('gemini/')) {
+    const model = trimmed.slice('gemini/'.length).trim();
+    return model ? { provider: 'gemini', model } : null;
+  }
+
+  if (trimmed.startsWith('gpt-') || trimmed.startsWith('o1') || trimmed.startsWith('o3')) {
+    return { provider: 'openai', model: trimmed };
+  }
+
+  if (trimmed.startsWith('gemini')) {
+    return { provider: 'gemini', model: trimmed };
+  }
+
+  return null;
+}
+
+function getAskAiModelOptions() {
+  const openAiConfigured = splitConfiguredModels(serverEnv.OPENAI_ASK_AI_MODELS);
+  const geminiConfigured = splitConfiguredModels(serverEnv.GEMINI_ASK_AI_MODELS);
+
+  const openAiModels = openAiConfigured.length > 0 ? openAiConfigured : [...DEFAULT_OPENAI_ASK_AI_MODELS];
+  const geminiModels = geminiConfigured.length > 0 ? geminiConfigured : [...DEFAULT_GEMINI_ASK_AI_MODELS];
+
+  const models: string[] = [];
+  if (serverEnv.OPENAI_API_KEY) {
+    models.push(...openAiModels.map((model) => formatModelOption('openai', model)));
+  }
+  if (serverEnv.GEMINI_API_KEY) {
+    models.push(...geminiModels.map((model) => formatModelOption('gemini', model)));
+  }
+
+  const openAiDefault = serverEnv.OPENAI_MODEL
+    ? formatModelOption('openai', serverEnv.OPENAI_MODEL)
+    : openAiModels[0]
+      ? formatModelOption('openai', openAiModels[0])
+      : null;
+  const geminiDefault = serverEnv.GEMINI_MODEL
+    ? formatModelOption('gemini', serverEnv.GEMINI_MODEL)
+    : geminiModels[0]
+      ? formatModelOption('gemini', geminiModels[0])
+      : null;
+
+  const defaultModel = [openAiDefault, geminiDefault].find((option) => option && models.includes(option)) ?? models[0] ?? null;
 
   return { models, defaultModel };
 }
@@ -597,6 +655,97 @@ async function callOpenAi(apiKey: string, model: string, messages: OpenAiMessage
   return rawContent;
 }
 
+async function callGemini(apiKey: string, model: string, messages: OpenAiMessage[]) {
+  const systemMessage = messages.find((m) => m.role === 'system');
+  const userMessages = messages.filter((m) => m.role !== 'system');
+  const prompt = userMessages.map((m) => m.content).join('\n\n');
+  const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(apiKey)}`;
+
+  const response = await fetch(endpoint, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      ...(systemMessage ? { system_instruction: { parts: [{ text: systemMessage.content }] } } : {}),
+      contents: [
+        {
+          role: 'user',
+          parts: [{ text: prompt }],
+        },
+      ],
+      generationConfig: {
+        temperature: 0.1,
+        responseMimeType: 'application/json',
+        responseSchema: {
+          type: 'object',
+          required: ['answer', 'keyFindings', 'evidence', 'reasoning', 'validation', 'limitations', 'recommendedVisualization', 'recommendedDecision'],
+          properties: {
+            answer: { type: 'string' },
+            keyFindings: { type: 'array', items: { type: 'string' } },
+            evidence: {
+              type: 'array',
+              items: {
+                type: 'object',
+                required: ['referenceId', 'detail'],
+                properties: {
+                  referenceId: { type: 'string' },
+                  detail: { type: 'string' },
+                  metric: { type: 'string' },
+                },
+              },
+            },
+            reasoning: { type: 'array', items: { type: 'string' } },
+            validation: { type: 'string' },
+            limitations: { type: 'array', items: { type: 'string' } },
+            recommendedVisualization: {
+              type: 'object',
+              nullable: true,
+              properties: {
+                chartType: { type: 'string' },
+                xAxis: { type: 'string' },
+                yAxis: { type: 'string' },
+                xKey: { type: 'string' },
+                yKey: { type: 'string' },
+                data: { type: 'array', items: { type: 'object' } },
+                notes: { type: 'string' },
+              },
+            },
+            recommendedDecision: {
+              type: 'object',
+              nullable: true,
+              properties: {
+                action: { type: 'string' },
+                expectedImpact: { type: 'string' },
+              },
+            },
+          },
+        },
+      },
+    }),
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`GEMINI_REQUEST_FAILED:${response.status}:${errorText}`);
+  }
+
+  const payload = (await response.json()) as {
+    candidates?: Array<{
+      content?: {
+        parts?: Array<{ text?: string }>;
+      };
+    }>;
+  };
+
+  const rawContent = payload.candidates?.[0]?.content?.parts?.map((part) => part.text ?? '').join('').trim();
+  if (!rawContent) {
+    throw new Error('GEMINI_EMPTY_RESPONSE');
+  }
+
+  return rawContent;
+}
+
 type StudyRow = {
   id: string;
   name: string;
@@ -690,6 +839,16 @@ export async function GET() {
   }
 
   const { models, defaultModel } = getAskAiModelOptions();
+  if (models.length === 0 || !defaultModel) {
+    return fail(
+      {
+        code: 'AI_NOT_CONFIGURED',
+        message: 'No AI provider configured. Add OPENAI_API_KEY or GEMINI_API_KEY on server.',
+      },
+      503,
+    );
+  }
+
   return ok({ models, defaultModel });
 }
 
@@ -708,15 +867,30 @@ export async function POST(request: Request) {
     return fail({ code: 'ORG_CONTEXT_MISSING', message: 'No active organization context found.' }, 403);
   }
 
-  let openAiKey: string;
-  try {
-    openAiKey = requireOpenAiKey();
-  } catch {
-    return fail({ code: 'AI_NOT_CONFIGURED', message: 'OPENAI_API_KEY is missing on server.' }, 503);
+  const { models: allowedModels, defaultModel } = getAskAiModelOptions();
+  if (allowedModels.length === 0 || !defaultModel) {
+    return fail(
+      {
+        code: 'AI_NOT_CONFIGURED',
+        message: 'No AI provider configured. Add OPENAI_API_KEY or GEMINI_API_KEY on server.',
+      },
+      503,
+    );
   }
 
-  const { models: allowedModels, defaultModel } = getAskAiModelOptions();
-  const selectedModel = parsed.data.model && allowedModels.includes(parsed.data.model) ? parsed.data.model : defaultModel;
+  const selectedModelOption = parsed.data.model && allowedModels.includes(parsed.data.model) ? parsed.data.model : defaultModel;
+  const selected = parseModelOption(selectedModelOption);
+  if (!selected) {
+    return fail({ code: 'AI_MODEL_INVALID', message: `Unsupported model option: ${selectedModelOption}` }, 422);
+  }
+
+  let providerApiKey: string;
+  try {
+    providerApiKey = selected.provider === 'openai' ? requireOpenAiKey() : requireGeminiKey();
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'AI provider key missing.';
+    return fail({ code: 'AI_NOT_CONFIGURED', message }, 503);
+  }
 
   const [
     studiesResult,
@@ -894,9 +1068,12 @@ export async function POST(request: Request) {
 
   let rawModelOutput: string;
   try {
-    rawModelOutput = await callOpenAi(openAiKey, selectedModel, messages);
+    rawModelOutput =
+      selected.provider === 'openai'
+        ? await callOpenAi(providerApiKey, selected.model, messages)
+        : await callGemini(providerApiKey, selected.model, messages);
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'OpenAI request failed.';
+    const message = error instanceof Error ? error.message : 'AI provider request failed.';
     return fail({ code: 'AI_REQUEST_FAILED', message }, 502);
   }
 
@@ -913,7 +1090,7 @@ export async function POST(request: Request) {
 
   return ok({
     reply: normalized,
-    modelUsed: selectedModel,
+    modelUsed: selectedModelOption,
     retrievedContext: retrievedDocs.map((doc) => ({
       referenceId: doc.referenceId,
       title: doc.title,

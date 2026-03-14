@@ -24,6 +24,7 @@
     "db:types": "npx supabase gen types typescript --linked > src/types/database.generated.ts"
   },
   "dependencies": {
+    "@google/genai": "^1.45.0",
     "@supabase/ssr": "^0.9.0",
     "@supabase/supabase-js": "^2.99.1",
     "next": "^16.1.6",

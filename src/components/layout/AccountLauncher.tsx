@@ -1,6 +1,6 @@
 'use client';
 
-import { type FormEvent, useMemo, useState } from 'react';
+import { type FormEvent, useEffect, useMemo, useState } from 'react';
 import { OrgSwitcher } from './OrgSwitcher';
 import { logoutAction } from './actions';
 import styles from './AccountLauncher.module.css';
@@ -8,6 +8,12 @@ import styles from './AccountLauncher.module.css';
 type OrgOption = {
   orgId: string;
   orgName: string;
+};
+
+type JoinableOrg = {
+  id: string;
+  name: string;
+  slug: string;
 };
 
 type ThemePreference = 'light' | 'dark' | 'system';
@@ -26,6 +32,11 @@ type AccountLauncherProps = {
 };
 
 type SaveState = {
+  tone: 'idle' | 'success' | 'error';
+  message: string;
+};
+
+type JoinState = {
   tone: 'idle' | 'success' | 'error';
   message: string;
 };
@@ -50,11 +61,66 @@ export function AccountLauncher({
   const [localeValue, setLocaleValue] = useState(initialLocale);
   const [timezoneValue, setTimezoneValue] = useState(initialTimezone);
   const [saveState, setSaveState] = useState<SaveState>({ tone: 'idle', message: '' });
+  const [joinableOrgs, setJoinableOrgs] = useState<JoinableOrg[]>([]);
+  const [selectedJoinOrgId, setSelectedJoinOrgId] = useState('');
+  const [isLoadingJoinable, setIsLoadingJoinable] = useState(false);
+  const [isJoining, setIsJoining] = useState(false);
+  const [joinState, setJoinState] = useState<JoinState>({ tone: 'idle', message: '' });
 
   const avatarFallback = useMemo(() => {
     const source = nameValue || fullName || email || 'R';
     return source.trim().charAt(0).toUpperCase();
   }, [nameValue, fullName, email]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+
+    let active = true;
+
+    async function loadJoinableOrganizations() {
+      setIsLoadingJoinable(true);
+      try {
+        const response = await fetch('/api/orgs/joinable', { cache: 'no-store' });
+        const json = (await response.json().catch(() => null)) as
+          | {
+              data?: JoinableOrg[];
+              error?: { message?: string };
+            }
+          | null;
+
+        if (!active) return;
+
+        if (!response.ok) {
+          setJoinableOrgs([]);
+          setSelectedJoinOrgId('');
+          setJoinState({
+            tone: 'error',
+            message: json?.error?.message ?? 'Could not load organizations right now.',
+          });
+          return;
+        }
+
+        const orgs = json?.data ?? [];
+        setJoinableOrgs(orgs);
+        setSelectedJoinOrgId((prev) => {
+          if (prev && orgs.some((org) => org.id === prev)) return prev;
+          return orgs[0]?.id ?? '';
+        });
+      } catch {
+        if (!active) return;
+        setJoinableOrgs([]);
+        setSelectedJoinOrgId('');
+        setJoinState({ tone: 'error', message: 'Network error while loading organizations.' });
+      } finally {
+        if (active) setIsLoadingJoinable(false);
+      }
+    }
+
+    void loadJoinableOrganizations();
+    return () => {
+      active = false;
+    };
+  }, [isOpen, orgOptions.length]);
 
   async function handleSave(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -96,6 +162,52 @@ export function AccountLauncher({
     }
   }
 
+  async function handleQuickJoinOrganization() {
+    if (!selectedJoinOrgId) {
+      setJoinState({ tone: 'error', message: 'Select an organization first.' });
+      return;
+    }
+
+    setIsJoining(true);
+    setJoinState({ tone: 'idle', message: '' });
+
+    try {
+      const response = await fetch('/api/orgs/join', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ orgId: selectedJoinOrgId }),
+      });
+
+      const json = (await response.json().catch(() => null)) as
+        | {
+            data?: { orgName?: string };
+            error?: { message?: string };
+          }
+        | null;
+
+      if (response.status === 401) {
+        window.location.href = '/login?next=/dashboard';
+        return;
+      }
+
+      if (!response.ok) {
+        setJoinState({
+          tone: 'error',
+          message: json?.error?.message ?? 'Unable to join organization right now.',
+        });
+        return;
+      }
+
+      const orgName = json?.data?.orgName ?? 'organization';
+      const notice = `Joined ${orgName} successfully.`;
+      window.location.href = `/dashboard?notice=${encodeURIComponent(notice)}`;
+    } catch {
+      setJoinState({ tone: 'error', message: 'Network error while joining organization.' });
+    } finally {
+      setIsJoining(false);
+    }
+  }
+
   return (
     <>
       <button
@@ -103,6 +215,7 @@ export function AccountLauncher({
         className={`${styles.triggerButton}${triggerClassName ? ` ${triggerClassName}` : ''}`}
         onClick={() => {
           setSaveState({ tone: 'idle', message: '' });
+          setJoinState({ tone: 'idle', message: '' });
           setIsOpen(true);
         }}
         aria-haspopup="dialog"
@@ -157,6 +270,40 @@ export function AccountLauncher({
                     <OrgSwitcher activeOrgId={activeOrgId} options={orgOptions} />
                   </div>
                 </div>
+
+                <div className={styles.fieldGroup}>
+                  <span className={styles.fieldLabel}>Join Seeded Organization</span>
+                  <div className={styles.quickJoinRow}>
+                    <select
+                      className={styles.quickJoinSelect}
+                      value={selectedJoinOrgId}
+                      onChange={(event) => setSelectedJoinOrgId(event.target.value)}
+                      disabled={isLoadingJoinable || joinableOrgs.length === 0}
+                    >
+                      {joinableOrgs.length === 0 ? (
+                        <option value="">{isLoadingJoinable ? 'Loading organizations...' : 'No organization available to join'}</option>
+                      ) : (
+                        joinableOrgs.map((org) => (
+                          <option key={org.id} value={org.id}>
+                            {org.name}
+                          </option>
+                        ))
+                      )}
+                    </select>
+                    <button
+                      type="button"
+                      className={styles.secondaryButton}
+                      disabled={isJoining || isLoadingJoinable || !selectedJoinOrgId}
+                      onClick={() => void handleQuickJoinOrganization()}
+                    >
+                      {isJoining ? 'Joining...' : 'Join'}
+                    </button>
+                  </div>
+                </div>
+
+                {joinState.message ? (
+                  <p className={`${styles.message}${joinState.tone === 'error' ? ` ${styles.error}` : ` ${styles.success}`}`}>{joinState.message}</p>
+                ) : null}
               </section>
 
               <section className={styles.section}>

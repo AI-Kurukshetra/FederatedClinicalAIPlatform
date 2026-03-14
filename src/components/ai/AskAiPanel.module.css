@@ -166,6 +166,63 @@
   font-size: 0.8rem !important;
 }
 
+.metricBadge {
+  display: inline-block;
+  margin-left: 0.4rem;
+  padding: 0.1rem 0.45rem;
+  background: #eef6ff;
+  border: 1px solid #c3daf5;
+  border-radius: 999px;
+  color: #2561a8;
+  font-size: 0.74rem;
+  font-weight: 600;
+}
+
+.decisionCard {
+  margin-top: 0.66rem;
+  border-left: 3px solid #2f84d8;
+  background: linear-gradient(90deg, #f0f7ff, #fafcff);
+  border-radius: 0 10px 10px 0;
+  padding: 0.65rem 0.85rem;
+}
+
+.decisionAction {
+  margin: 0 0 0.3rem;
+  color: #1a3d62;
+  font-size: 0.87rem;
+  line-height: 1.45;
+}
+
+.decisionImpact {
+  margin: 0;
+  color: #4e6e90;
+  font-size: 0.8rem;
+}
+
+.contextTags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin-top: 0.7rem;
+  padding-top: 0.6rem;
+  border-top: 1px solid #e8f0f9;
+}
+
+.contextTag {
+  display: inline-block;
+  padding: 0.22rem 0.6rem;
+  background: #f1f7ff;
+  border: 1px solid #ccdff5;
+  border-radius: 999px;
+  color: #2a5480;
+  font-size: 0.75rem;
+  font-weight: 500;
+  max-width: 180px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .chartList {
   margin-top: 0.4rem;
   display: grid;

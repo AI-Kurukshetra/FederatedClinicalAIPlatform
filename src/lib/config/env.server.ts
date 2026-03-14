@@ -7,6 +7,9 @@ const serverEnvSchema = z.object({
   OPENAI_API_KEY: z.string().min(1).optional(),
   OPENAI_MODEL: z.string().min(1).optional(),
   OPENAI_ASK_AI_MODELS: z.string().min(1).optional(),
+  GEMINI_API_KEY: z.string().min(1).optional(),
+  GEMINI_MODEL: z.string().min(1).optional(),
+  GEMINI_ASK_AI_MODELS: z.string().min(1).optional(),
   SMTP_HOST: z.string().min(1).optional(),
   SMTP_PORT: z.coerce.number().int().positive().optional(),
   SMTP_SECURE: z.enum(['true', 'false']).optional(),
@@ -20,6 +23,9 @@ const parsedServerEnv = serverEnvSchema.safeParse({
   OPENAI_API_KEY: process.env.OPENAI_API_KEY,
   OPENAI_MODEL: process.env.OPENAI_MODEL,
   OPENAI_ASK_AI_MODELS: process.env.OPENAI_ASK_AI_MODELS,
+  GEMINI_API_KEY: process.env.GEMINI_API_KEY,
+  GEMINI_MODEL: process.env.GEMINI_MODEL,
+  GEMINI_ASK_AI_MODELS: process.env.GEMINI_ASK_AI_MODELS,
   SMTP_HOST: process.env.SMTP_HOST,
   SMTP_PORT: process.env.SMTP_PORT,
   SMTP_SECURE: process.env.SMTP_SECURE,
@@ -34,6 +40,9 @@ export const serverEnv = {
   OPENAI_API_KEY: parsedServerEnv.success ? parsedServerEnv.data.OPENAI_API_KEY : undefined,
   OPENAI_MODEL: parsedServerEnv.success ? parsedServerEnv.data.OPENAI_MODEL : undefined,
   OPENAI_ASK_AI_MODELS: parsedServerEnv.success ? parsedServerEnv.data.OPENAI_ASK_AI_MODELS : undefined,
+  GEMINI_API_KEY: parsedServerEnv.success ? parsedServerEnv.data.GEMINI_API_KEY : undefined,
+  GEMINI_MODEL: parsedServerEnv.success ? parsedServerEnv.data.GEMINI_MODEL : undefined,
+  GEMINI_ASK_AI_MODELS: parsedServerEnv.success ? parsedServerEnv.data.GEMINI_ASK_AI_MODELS : undefined,
   SMTP_HOST: parsedServerEnv.success ? parsedServerEnv.data.SMTP_HOST : undefined,
   SMTP_PORT: parsedServerEnv.success ? parsedServerEnv.data.SMTP_PORT : undefined,
   SMTP_SECURE: parsedServerEnv.success ? parsedServerEnv.data.SMTP_SECURE : undefined,
@@ -56,6 +65,14 @@ export function requireOpenAiKey() {
   }
 
   return serverEnv.OPENAI_API_KEY;
+}
+
+export function requireGeminiKey() {
+  if (!serverEnv.GEMINI_API_KEY) {
+    throw new Error('GEMINI_API_KEY is required for Gemini Ask AI operations.');
+  }
+
+  return serverEnv.GEMINI_API_KEY;
 }
 
 export function requireSmtpConfig() {

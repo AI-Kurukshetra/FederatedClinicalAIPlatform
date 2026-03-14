@@ -1,6 +1,6 @@
 ﻿'use client';
 
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Button } from '@/components/ui/Button';
 import styles from './AskAiPanel.module.css';
 
@@ -217,15 +217,6 @@ export function AskAiPanel() {
 
   const canSend = question.trim().length >= 4 && !loading;
 
-  const lastAssistantMessage = useMemo(() => {
-    for (let index = messages.length - 1; index >= 0; index -= 1) {
-      const message = messages[index];
-      if (message.role === 'assistant') return message;
-    }
-
-    return null;
-  }, [messages]);
-
   async function submitQuestion(rawQuestion: string) {
     const cleanQuestion = rawQuestion.trim();
     if (!cleanQuestion || cleanQuestion.length < 4 || loading) return;
@@ -367,8 +358,8 @@ export function AskAiPanel() {
                         <ul>
                           {message.content.evidence.map((evidence, index) => (
                             <li key={`${message.id}-evidence-${index}`}>
-                              <strong>{evidence.referenceId}</strong>: {evidence.detail}
-                              {evidence.metric ? ` (${evidence.metric})` : ''}
+                              {evidence.detail}
+                              {evidence.metric ? <span className={styles.metricBadge}>{evidence.metric}</span> : null}
                             </li>
                           ))}
                         </ul>
@@ -405,17 +396,21 @@ export function AskAiPanel() {
                     <VisualizationPreview visualization={message.content.recommendedVisualization} />
 
                     {message.content.recommendedDecision ? (
-                      <div className={styles.section}>
-                        <h4>Recommended Decision</h4>
-                        <p>{message.content.recommendedDecision.action}</p>
-                        <p className={styles.smallMuted}>Expected Impact: {message.content.recommendedDecision.expectedImpact}</p>
+                      <div className={styles.decisionCard}>
+                        <p className={styles.decisionAction}>
+                          <strong>Recommended decision:</strong> {message.content.recommendedDecision.action}
+                        </p>
+                        <p className={styles.decisionImpact}>Expected impact: {message.content.recommendedDecision.expectedImpact}</p>
                       </div>
                     ) : null}
 
                     {message.context.length > 0 ? (
-                      <div className={styles.section}>
-                        <h4>Context References</h4>
-                        <p className={styles.smallMuted}>{message.context.map((item) => item.referenceId).join(', ')}</p>
+                      <div className={styles.contextTags}>
+                        {message.context.map((item) => (
+                          <span key={item.referenceId} className={styles.contextTag} title={item.referenceId}>
+                            {item.title}
+                          </span>
+                        ))}
                       </div>
                     ) : null}
                   </div>
@@ -463,11 +458,6 @@ export function AskAiPanel() {
               </div>
             </footer>
 
-            {lastAssistantMessage?.content.recommendedVisualization?.data.length ? (
-              <div className={styles.visualFooter}>
-                Latest chart rows: {lastAssistantMessage.content.recommendedVisualization.data.length}
-              </div>
-            ) : null}
           </aside>
         </div>
       ) : null}

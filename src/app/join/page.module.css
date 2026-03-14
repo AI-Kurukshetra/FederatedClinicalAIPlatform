@@ -1,0 +1,48 @@
+.authActions {
+  display: grid;
+  gap: 0.7rem;
+}
+
+.primaryLink {
+  text-decoration: none;
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 40px;
+  border-radius: 10px;
+  background: #0c63ca;
+  color: #ffffff;
+  font-weight: 700;
+}
+
+.secondaryLink {
+  text-decoration: none;
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 40px;
+  border-radius: 10px;
+  border: 1px solid #c7d8ea;
+  background: #ffffff;
+  color: #264a6f;
+  font-weight: 700;
+}
+
+.joinForm {
+  display: grid;
+  gap: 0.8rem;
+}
+
+.feedback {
+  margin: 0;
+  font-size: 0.84rem;
+  font-weight: 600;
+}
+
+.feedbackSuccess {
+  color: #187447;
+}
+
+.feedbackError {
+  color: #ac2932;
+}
