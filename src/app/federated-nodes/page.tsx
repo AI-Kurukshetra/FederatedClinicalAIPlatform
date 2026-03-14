@@ -6,15 +6,18 @@ import { createServerSupabaseClient } from '@/lib/supabase/server';
 import { getPrimaryOrgContext } from '@/server/services/org-context';
 import {
   archiveFederatedNodeAction,
+  claimNextOperationAction,
   createFederatedNodeAction,
+  queueFederatedOperationAction,
   restoreFederatedNodeAction,
   runConnectivityCheckAction,
   updateFederatedNodeStatusAction,
+  updateFederatedOperationStatusAction,
 } from './actions';
 import styles from '../workspace.module.css';
 
 function formatHeartbeat(value: string | null) {
-  if (!value) return 'No heartbeat';
+  if (!value) return 'N/A';
   return new Date(value).toLocaleString();
 }
 
@@ -40,11 +43,41 @@ export default async function FederatedNodesPage({ searchParams }: FederatedNode
 
   const { data: nodes } = orgContext
     ? await supabase
-      .from('federated_nodes')
-      .select('id, name, region, status, last_heartbeat_at, deleted_at')
-      .eq('org_id', orgContext.orgId)
-      .order('created_at', { ascending: false })
-    : { data: [] as Array<{ id: string; name: string; region: string; status: string; last_heartbeat_at: string | null; deleted_at: string | null }> };
+        .from('federated_nodes')
+        .select('id, name, region, status, last_heartbeat_at, deleted_at')
+        .eq('org_id', orgContext.orgId)
+        .order('created_at', { ascending: false })
+    : {
+        data: [] as Array<{
+          id: string;
+          name: string;
+          region: string;
+          status: string;
+          last_heartbeat_at: string | null;
+          deleted_at: string | null;
+        }>,
+      };
+
+  const { data: operations } = orgContext
+    ? await supabase
+        .from('federated_operations')
+        .select('id, node_id, operation_type, status, priority, queued_at, started_at, finished_at')
+        .eq('org_id', orgContext.orgId)
+        .is('deleted_at', null)
+        .order('queued_at', { ascending: false })
+        .limit(120)
+    : {
+        data: [] as Array<{
+          id: string;
+          node_id: string | null;
+          operation_type: string;
+          status: string;
+          priority: number;
+          queued_at: string;
+          started_at: string | null;
+          finished_at: string | null;
+        }>,
+      };
 
   const activeNodes = (nodes ?? []).filter((node) => !node.deleted_at);
   const archivedNodes = (nodes ?? []).filter((node) => Boolean(node.deleted_at));
@@ -56,8 +89,10 @@ export default async function FederatedNodesPage({ searchParams }: FederatedNode
     heartbeat: formatHeartbeat(node.last_heartbeat_at),
     status: node.status,
   }));
+
   const onlineCount = nodeRows.filter((item) => item.status === 'online').length;
   const degradedCount = nodeRows.filter((item) => item.status === 'degraded').length;
+  const queuedOperations = (operations ?? []).filter((operation) => operation.status === 'queued').length;
 
   return (
     <section className={styles.page}>
@@ -66,7 +101,7 @@ export default async function FederatedNodesPage({ searchParams }: FederatedNode
       <header className={styles.header}>
         <h1 className={styles.title}>Federated Nodes</h1>
         <p className={styles.subtitle}>
-          Monitor network health, participation readiness, and job execution latency for distributed model and analytics operations.
+          Monitor node health and manage queued/running operations with explicit worker-style lifecycle transitions.
         </p>
         <div className={styles.actions}>
           <Button>Register Node</Button>
@@ -94,11 +129,11 @@ export default async function FederatedNodesPage({ searchParams }: FederatedNode
         </Card>
         <Card title="Online Nodes">
           <div className={styles.metric}>{onlineCount}</div>
-          <p className={styles.metricLabel}>Healthy nodes available for workload scheduling</p>
+          <p className={styles.metricLabel}>Healthy nodes available for scheduling</p>
         </Card>
-        <Card title="Degraded Nodes">
-          <div className={styles.metric}>{degradedCount}</div>
-          <p className={styles.metricLabel}>Nodes requiring connectivity or health checks</p>
+        <Card title="Queued Operations">
+          <div className={styles.metric}>{queuedOperations}</div>
+          <p className={styles.metricLabel}>Operations waiting for worker claim</p>
         </Card>
       </div>
 
@@ -130,6 +165,60 @@ export default async function FederatedNodesPage({ searchParams }: FederatedNode
           </div>
         </form>
       </Card>
+
+      <div className={styles.grid2}>
+        <Card title="Queue Operation" description="Create worker queue items with explicit priority.">
+          <form action={queueFederatedOperationAction} className={styles.formGridSingle}>
+            <div className={styles.formGrid}>
+              <div className={styles.field}>
+                <label htmlFor="op-node">Node (optional)</label>
+                <select id="op-node" name="nodeId" className={styles.select} defaultValue="">
+                  <option value="">Any available node</option>
+                  {activeNodes.map((node) => (
+                    <option key={node.id} value={node.id}>
+                      {node.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className={styles.field}>
+                <label htmlFor="op-type">Type</label>
+                <select id="op-type" name="operationType" className={styles.select} defaultValue="connectivity_check">
+                  <option value="connectivity_check">connectivity_check</option>
+                  <option value="quality_scan">quality_scan</option>
+                  <option value="cohort_run">cohort_run</option>
+                  <option value="analysis_run">analysis_run</option>
+                </select>
+              </div>
+              <div className={styles.field}>
+                <label htmlFor="op-priority">Priority</label>
+                <input id="op-priority" name="priority" className={styles.input} defaultValue="50" required />
+              </div>
+            </div>
+            <div className={styles.actions}>
+              <Button type="submit">Queue Operation</Button>
+            </div>
+          </form>
+        </Card>
+
+        <Card title="Claim Next Operation" description="Simulate worker pulling the next eligible queued item.">
+          <form action={claimNextOperationAction} className={styles.formGridSingle}>
+            <div className={styles.field}>
+              <label htmlFor="claim-node">Worker Node</label>
+              <select id="claim-node" name="nodeId" className={styles.select} required>
+                {activeNodes.map((node) => (
+                  <option key={node.id} value={node.id}>
+                    {node.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className={styles.actions}>
+              <Button type="submit">Claim</Button>
+            </div>
+          </form>
+        </Card>
+      </div>
 
       <div className={styles.tableWrap}>
         <table className={styles.table}>
@@ -185,6 +274,58 @@ export default async function FederatedNodesPage({ searchParams }: FederatedNode
           </tbody>
         </table>
       </div>
+
+      <Card title="Operation Queue" description="Queued/running/completed operation records across all nodes.">
+        <div className={styles.tableWrap}>
+          <table className={styles.table}>
+            <thead>
+              <tr>
+                <th>Operation</th>
+                <th>Node</th>
+                <th>Status</th>
+                <th>Priority</th>
+                <th>Queued</th>
+                <th>Started</th>
+                <th>Finished</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {(operations ?? []).map((operation) => (
+                <tr key={operation.id}>
+                  <td>{operation.operation_type}</td>
+                  <td>{activeNodes.find((node) => node.id === operation.node_id)?.name ?? operation.node_id ?? 'Unassigned'}</td>
+                  <td>{operation.status}</td>
+                  <td>{operation.priority}</td>
+                  <td>{formatHeartbeat(operation.queued_at)}</td>
+                  <td>{formatHeartbeat(operation.started_at)}</td>
+                  <td>{formatHeartbeat(operation.finished_at)}</td>
+                  <td>
+                    <form action={updateFederatedOperationStatusAction} className={styles.inlineActions}>
+                      <input type="hidden" name="operationId" value={operation.id} />
+                      <select name="status" defaultValue={operation.status} className={styles.inlineSelect}>
+                        <option value="queued">queued</option>
+                        <option value="running">running</option>
+                        <option value="completed">completed</option>
+                        <option value="failed">failed</option>
+                        <option value="cancelled">cancelled</option>
+                      </select>
+                      <button type="submit" className={styles.inlineButton}>
+                        Save
+                      </button>
+                    </form>
+                  </td>
+                </tr>
+              ))}
+              {(operations ?? []).length === 0 ? (
+                <tr>
+                  <td colSpan={8}>No federated operations queued yet.</td>
+                </tr>
+              ) : null}
+            </tbody>
+          </table>
+        </div>
+      </Card>
 
       {showArchived ? (
         <Card title="Archived Federated Nodes" description="Restore archived nodes into active orchestration pool.">

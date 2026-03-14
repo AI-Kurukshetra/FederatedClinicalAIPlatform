@@ -1,127 +1,321 @@
 .shell {
+  --sidebar-width: 252px;
   min-height: 100vh;
-  display: grid;
-  grid-template-columns: 270px 1fr;
-  background: var(--bg-canvas);
+  display: flex;
+  background:
+    radial-gradient(circle at 0% 0%, rgba(21, 72, 135, 0.12), transparent 30%),
+    linear-gradient(180deg, #f4f8fc 0%, #eef4fa 100%);
+}
+
+.sidebarToggleInput {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
 }
 
 .sidebar {
-  border-right: 1px solid var(--border-default);
-  background: linear-gradient(180deg, #0f2746 0%, #123158 100%);
-  color: #e9f2ff;
-  padding: 1.1rem;
+  width: var(--sidebar-width);
+  flex: 0 0 var(--sidebar-width);
+  border-right: 1px solid rgba(255, 255, 255, 0.1);
+  background:
+    radial-gradient(circle at 15% 12%, rgba(112, 182, 255, 0.23), transparent 33%),
+    linear-gradient(180deg, #0c1f39 0%, #102a4e 46%, #12325f 100%);
+  color: #e6f0ff;
+  padding: 1.2rem 1rem 0.95rem;
+  height: 100vh;
   position: sticky;
   top: 0;
-  height: 100vh;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  gap: 0.9rem;
+  overflow: hidden;
+  overflow-x: hidden;
+  transition: width 0.22s ease, flex-basis 0.22s ease, padding 0.22s ease;
+  z-index: 20;
+}
+
+.sidebarTop {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.6rem;
+  padding-bottom: 0.72rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.16);
+}
+
+.sidebarToggleButton {
+  width: 30px;
+  height: 30px;
+  border-radius: 9px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  background: rgba(255, 255, 255, 0.07);
+  color: #cae0fb;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background-color 0.18s ease, border-color 0.18s ease;
+}
+
+.sidebarToggleButton:hover {
+  background: rgba(255, 255, 255, 0.13);
+  border-color: rgba(255, 255, 255, 0.25);
 }
 
 .brand {
-  font-weight: 800;
-  font-size: 1rem;
+  letter-spacing: 0.01em;
+  font-weight: 650;
+  font-size: 0.95rem;
+  line-height: 1.25;
 }
 
 .subBrand {
-  margin-top: 0.35rem;
-  font-size: 0.78rem;
-  color: #b8cde8;
+  margin-top: 0.32rem;
+  font-size: 0.72rem;
+  font-weight: 500;
+  color: #9eb8d8;
 }
 
 .nav {
-  margin-top: 1.2rem;
+  margin-top: 0;
   display: grid;
-  gap: 0.45rem;
+  gap: 0.4rem;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding-right: 0.05rem;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.nav::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+  display: none;
 }
 
 .navLink {
-  border: 1px solid transparent;
-  border-radius: 10px;
-  color: #dce9f9;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 11px;
+  color: #d8e8fb;
   text-decoration: none;
-  padding: 0.6rem 0.65rem;
+  padding: 0.64rem 0.72rem;
   font-weight: 600;
-  font-size: 0.92rem;
+  font-size: 0.86rem;
+  background: rgba(255, 255, 255, 0.03);
+  display: inline-flex;
+  align-items: center;
+  gap: 0.52rem;
+  transition: background-color 0.18s ease, border-color 0.18s ease, transform 0.18s ease;
 }
 
 .navLink:hover {
   text-decoration: none;
-  background: rgba(255, 255, 255, 0.08);
-  border-color: rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.12);
+  border-color: rgba(255, 255, 255, 0.26);
+  transform: translateX(2px);
 }
 
-.content {
-  padding: 1.2rem;
-}
-
-.topbar {
-  min-height: 60px;
-  background: var(--bg-surface);
-  border: 1px solid var(--border-default);
-  border-radius: var(--radius-md);
-  box-shadow: var(--shadow-soft);
-  padding: 0.8rem 1rem;
-  display: flex;
+.navIcon {
+  width: 18px;
+  height: 18px;
+  display: inline-flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 1rem;
+  justify-content: center;
+  color: #c6dcf7;
+  flex-shrink: 0;
+}
+
+.navText {
+  white-space: nowrap;
+}
+
+.sidebarFooter {
+  margin-top: 0;
+  padding-top: 0.82rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.14);
+  display: flex;
+  align-items: flex-start;
+  gap: 0.72rem;
+}
+
+.footerLogo {
+  flex-shrink: 0;
+}
+
+.footerDetails {
+  min-width: 0;
+  display: grid;
+  gap: 0.16rem;
 }
 
 .orgName {
-  font-weight: 700;
-  color: var(--text-strong);
+  font-weight: 550;
+  color: #dfedff;
+  font-size: 0.76rem;
+  line-height: 1.35;
 }
 
-.actions {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-}
-
-.userChip {
-  border: 1px solid var(--border-default);
-  border-radius: 999px;
-  background: var(--bg-soft);
-  color: var(--text-body);
-  padding: 0.45rem 0.85rem;
-  font-size: 0.84rem;
+.userName {
+  color: #edf4ff;
+  font-size: 0.82rem;
   font-weight: 600;
+  line-height: 1.3;
 }
 
-.signOut {
-  border: 1px solid var(--border-default);
-  border-radius: 999px;
-  background: var(--bg-surface);
-  color: var(--text-body);
+.userPlan {
+  margin-top: 0.15rem;
+  color: #b6cce6;
+  font-size: 0.72rem;
+  font-weight: 550;
+}
+
+.sidebarBackdrop {
+  display: none;
+}
+
+.content {
+  flex: 1;
+  min-width: 0;
+  padding: 1.2rem 1.25rem;
+}
+
+.mobileTopbar {
+  display: none;
+}
+
+.mobileToggleButton {
+  width: 34px;
   height: 34px;
-  padding: 0 0.75rem;
+  border-radius: 10px;
+  border: 1px solid #cfdded;
+  background: #ffffff;
+  color: #1d4267;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   cursor: pointer;
-  font-weight: 600;
 }
 
-.signOut:hover {
-  background: var(--bg-surface-muted);
+.mobileTitle {
+  color: #193a5c;
+  font-size: 0.92rem;
+  font-weight: 800;
 }
 
 .main {
   margin-top: 1rem;
 }
 
+.sidebarToggleInput:checked + .sidebar {
+  width: 88px;
+  flex-basis: 88px;
+  padding-left: 0.68rem;
+  padding-right: 0.68rem;
+}
+
+.sidebarToggleInput:checked + .sidebar .brand,
+.sidebarToggleInput:checked + .sidebar .subBrand,
+.sidebarToggleInput:checked + .sidebar .navText,
+.sidebarToggleInput:checked + .sidebar .footerDetails {
+  display: none;
+}
+
+.sidebarToggleInput:checked + .sidebar .sidebarTop {
+  justify-content: center;
+}
+
+.sidebarToggleInput:checked + .sidebar .sidebarToggleButton svg {
+  transform: rotate(180deg);
+}
+
+.sidebarToggleInput:checked + .sidebar .navLink {
+  justify-content: center;
+  padding-left: 0.52rem;
+  padding-right: 0.52rem;
+}
+
+.sidebarToggleInput:checked + .sidebar .sidebarFooter {
+  justify-content: center;
+}
+
 @media (max-width: 1024px) {
   .shell {
-    grid-template-columns: 1fr;
+    display: block;
   }
 
   .sidebar {
-    position: static;
-    height: auto;
+    position: fixed;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: var(--sidebar-width);
+    height: 100dvh;
+    flex-basis: auto;
+    transform: translateX(-102%);
+    transition: transform 0.22s ease;
+    border-right: 1px solid rgba(255, 255, 255, 0.18);
   }
 
-  .nav {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+  .sidebarToggleInput:checked + .sidebar {
+    width: var(--sidebar-width);
+    flex-basis: auto;
+    padding: 1.2rem 1rem 0.95rem;
+    transform: translateX(0);
+    box-shadow: 0 20px 48px rgba(7, 19, 36, 0.5);
   }
-}
 
-@media (max-width: 700px) {
-  .nav {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+  .sidebarToggleInput:checked + .sidebar .brand,
+  .sidebarToggleInput:checked + .sidebar .subBrand,
+  .sidebarToggleInput:checked + .sidebar .navText,
+  .sidebarToggleInput:checked + .sidebar .footerDetails {
+    display: block;
+  }
+
+  .sidebarToggleInput:checked + .sidebar .navText {
+    display: inline;
+  }
+
+  .sidebarToggleInput:checked + .sidebar .footerDetails {
+    display: grid;
+  }
+
+  .sidebarToggleInput:checked + .sidebar .sidebarTop {
+    justify-content: space-between;
+  }
+
+  .sidebarToggleInput:checked + .sidebar .navLink {
+    justify-content: flex-start;
+    padding-left: 0.72rem;
+    padding-right: 0.72rem;
+  }
+
+  .sidebarToggleInput:checked + .sidebar .sidebarFooter {
+    justify-content: flex-start;
+  }
+
+  .sidebarBackdrop {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(7, 15, 30, 0.46);
+    z-index: 18;
+    cursor: pointer;
+  }
+
+  .sidebarToggleInput:checked + .sidebar + .sidebarBackdrop {
+    display: block;
+  }
+
+  .content {
+    padding: 0.95rem;
+  }
+
+  .mobileTopbar {
+    min-height: 48px;
+    margin-bottom: 0.4rem;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.55rem;
   }
 }

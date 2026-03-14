@@ -85,3 +85,68 @@ export async function POST(request: Request, context: Params) {
 
   return ok(data, undefined, 201);
 }
+
+export async function PATCH(request: Request, context: Params) {
+  const { supabase, user } = await requireAuth();
+  if (!user) return fail({ code: 'UNAUTHORIZED', message: 'You must be logged in.' }, 401);
+
+  const { id } = await context.params;
+  const body = await request.json().catch(() => null);
+  const userId = body?.userId;
+  const role = body?.role;
+  if (typeof userId !== 'string' || typeof role !== 'string') {
+    return fail({ code: 'VALIDATION_ERROR', message: 'userId and role are required.' }, 422);
+  }
+
+  const { data, error } = await supabase
+    .from('study_members')
+    .update({ role })
+    .eq('study_id', id)
+    .eq('user_id', userId)
+    .is('deleted_at', null)
+    .select('study_id, user_id, role, added_at, created_at')
+    .single();
+
+  if (error) return fail({ code: 'STUDY_MEMBER_UPDATE_FAILED', message: error.message }, 400);
+
+  await writeAuditLog({
+    actorId: user.id,
+    action: 'study_member.role_updated',
+    entity: 'study_member',
+    entityId: `${data.study_id}:${data.user_id}`,
+    metadata: { studyId: data.study_id, userId: data.user_id, role: data.role },
+  });
+
+  return ok(data);
+}
+
+export async function DELETE(request: Request, context: Params) {
+  const { supabase, user } = await requireAuth();
+  if (!user) return fail({ code: 'UNAUTHORIZED', message: 'You must be logged in.' }, 401);
+
+  const { id } = await context.params;
+  const body = await request.json().catch(() => null);
+  const userId = body?.userId;
+  if (typeof userId !== 'string') return fail({ code: 'VALIDATION_ERROR', message: 'userId is required.' }, 422);
+
+  const { data, error } = await supabase
+    .from('study_members')
+    .update({ deleted_at: new Date().toISOString() })
+    .eq('study_id', id)
+    .eq('user_id', userId)
+    .is('deleted_at', null)
+    .select('study_id, user_id')
+    .single();
+
+  if (error) return fail({ code: 'STUDY_MEMBER_DELETE_FAILED', message: error.message }, 400);
+
+  await writeAuditLog({
+    actorId: user.id,
+    action: 'study_member.removed',
+    entity: 'study_member',
+    entityId: `${data.study_id}:${data.user_id}`,
+    metadata: { studyId: data.study_id, userId: data.user_id },
+  });
+
+  return ok(data);
+}

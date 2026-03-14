@@ -7,11 +7,15 @@ import { getPrimaryOrgContext } from '@/server/services/org-context';
 import {
   archiveDataQualityMetricAction,
   archiveIngestionJobAction,
+  createConnectorConfigAction,
   createDataQualityMetricAction,
   createIngestionJobAction,
+  createQualityRuleAction,
   restoreDataQualityMetricAction,
   restoreIngestionJobAction,
   runQualityScanAction,
+  toggleQualityRuleAction,
+  updateConnectorStatusAction,
 } from './actions';
 import styles from '../workspace.module.css';
 
@@ -32,6 +36,29 @@ type JobRow = {
   status: string;
   finished_at: string | null;
   created_at: string;
+  deleted_at: string | null;
+};
+
+type ConnectorRow = {
+  id: string;
+  name: string;
+  source_type: string;
+  status: string;
+  schedule_cron: string | null;
+  node_id: string | null;
+  last_sync_at: string | null;
+  deleted_at: string | null;
+};
+
+type QualityRuleRow = {
+  id: string;
+  rule_name: string;
+  metric_name: string;
+  threshold: number;
+  comparator: string;
+  severity: string;
+  is_active: boolean;
+  connector_id: string | null;
   deleted_at: string | null;
 };
 
@@ -78,10 +105,30 @@ export default async function DataSourcesPage({ searchParams }: DataSourcesPageP
         .limit(120)
     : { data: [] as JobRow[] };
 
+  const { data: connectors } = orgContext
+    ? await supabase
+        .from('connector_configs')
+        .select('id, name, source_type, status, schedule_cron, node_id, last_sync_at, deleted_at')
+        .eq('org_id', orgContext.orgId)
+        .order('created_at', { ascending: false })
+        .limit(120)
+    : { data: [] as ConnectorRow[] };
+
+  const { data: qualityRules } = orgContext
+    ? await supabase
+        .from('quality_rules')
+        .select('id, rule_name, metric_name, threshold, comparator, severity, is_active, connector_id, deleted_at')
+        .eq('org_id', orgContext.orgId)
+        .order('created_at', { ascending: false })
+        .limit(120)
+    : { data: [] as QualityRuleRow[] };
+
   const activeMetrics = (metrics ?? []).filter((item) => !item.deleted_at);
   const archivedMetrics = (metrics ?? []).filter((item) => Boolean(item.deleted_at));
   const activeJobs = (jobs ?? []).filter((item) => !item.deleted_at);
   const archivedJobs = (jobs ?? []).filter((item) => Boolean(item.deleted_at));
+  const activeConnectors = (connectors ?? []).filter((item) => !item.deleted_at);
+  const activeQualityRules = (qualityRules ?? []).filter((item) => !item.deleted_at);
 
   const latestMetricBySource = new Map<string, MetricRow>();
   for (const metric of activeMetrics) {
@@ -224,6 +271,90 @@ export default async function DataSourcesPage({ searchParams }: DataSourcesPageP
         </Card>
       </div>
 
+      <div className={styles.grid2}>
+        <Card title="Connector Config" description="Define source connector metadata and pipeline schedule.">
+          <form action={createConnectorConfigAction} className={styles.formGridSingle}>
+            <div className={styles.formGrid}>
+              <div className={styles.field}>
+                <label htmlFor="cc-name">Connector Name</label>
+                <input id="cc-name" name="name" className={styles.input} placeholder="Epic FHIR Feed - East" required />
+              </div>
+              <div className={styles.field}>
+                <label htmlFor="cc-source-type">Source Type</label>
+                <select id="cc-source-type" name="sourceType" className={styles.select} defaultValue="fhir">
+                  <option value="ehr">ehr</option>
+                  <option value="pacs">pacs</option>
+                  <option value="lab">lab</option>
+                  <option value="notes">notes</option>
+                  <option value="claims">claims</option>
+                  <option value="fhir">fhir</option>
+                  <option value="omics">omics</option>
+                  <option value="other">other</option>
+                </select>
+              </div>
+              <div className={styles.field}>
+                <label htmlFor="cc-status">Status</label>
+                <select id="cc-status" name="status" className={styles.select} defaultValue="active">
+                  <option value="active">active</option>
+                  <option value="paused">paused</option>
+                  <option value="failed">failed</option>
+                  <option value="archived">archived</option>
+                </select>
+              </div>
+              <div className={styles.field}>
+                <label htmlFor="cc-schedule">Schedule Cron (optional)</label>
+                <input id="cc-schedule" name="scheduleCron" className={styles.input} placeholder="0 */6 * * *" />
+              </div>
+            </div>
+            <div className={styles.field}>
+              <label htmlFor="cc-config-json">Config JSON (optional)</label>
+              <textarea id="cc-config-json" name="configJson" className={styles.textarea} placeholder='{"fhirVersion":"R4","mode":"incremental"}' />
+            </div>
+            <div className={styles.actions}>
+              <Button type="submit">Create Connector</Button>
+            </div>
+          </form>
+        </Card>
+
+        <Card title="Quality Rule Definition" description="Create threshold rules to evaluate ingestion metrics.">
+          <form action={createQualityRuleAction} className={styles.formGridSingle}>
+            <div className={styles.formGrid}>
+              <div className={styles.field}>
+                <label htmlFor="qr-name">Rule Name</label>
+                <input id="qr-name" name="ruleName" className={styles.input} placeholder="Completeness must stay above 95%" required />
+              </div>
+              <div className={styles.field}>
+                <label htmlFor="qr-metric">Metric Name</label>
+                <input id="qr-metric" name="metricName" className={styles.input} placeholder="completeness_score" required />
+              </div>
+              <div className={styles.field}>
+                <label htmlFor="qr-threshold">Threshold</label>
+                <input id="qr-threshold" name="threshold" className={styles.input} placeholder="95" required />
+              </div>
+              <div className={styles.field}>
+                <label htmlFor="qr-comparator">Comparator</label>
+                <select id="qr-comparator" name="comparator" className={styles.select} defaultValue="gte">
+                  <option value="gte">gte</option>
+                  <option value="lte">lte</option>
+                  <option value="eq">eq</option>
+                </select>
+              </div>
+              <div className={styles.field}>
+                <label htmlFor="qr-severity">Severity</label>
+                <select id="qr-severity" name="severity" className={styles.select} defaultValue="warning">
+                  <option value="info">info</option>
+                  <option value="warning">warning</option>
+                  <option value="critical">critical</option>
+                </select>
+              </div>
+            </div>
+            <div className={styles.actions}>
+              <Button type="submit">Create Rule</Button>
+            </div>
+          </form>
+        </Card>
+      </div>
+
       <div className={styles.tableWrap}>
         <table className={styles.table}>
           <thead>
@@ -331,6 +462,97 @@ export default async function DataSourcesPage({ searchParams }: DataSourcesPageP
               {activeMetrics.length === 0 ? (
                 <tr>
                   <td colSpan={6}>No active quality metrics.</td>
+                </tr>
+              ) : null}
+            </tbody>
+          </table>
+        </div>
+      </Card>
+
+      <Card title="Connector Configurations" description="Data source connector metadata and lifecycle controls.">
+        <div className={styles.tableWrap}>
+          <table className={styles.table}>
+            <thead>
+              <tr>
+                <th>Connector</th>
+                <th>Type</th>
+                <th>Schedule</th>
+                <th>Last Sync</th>
+                <th>Status</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {activeConnectors.map((connector) => (
+                <tr key={connector.id}>
+                  <td>{connector.name}</td>
+                  <td>{connector.source_type}</td>
+                  <td>{connector.schedule_cron || 'manual'}</td>
+                  <td>{formatTimestamp(connector.last_sync_at)}</td>
+                  <td>{connector.status}</td>
+                  <td>
+                    <form action={updateConnectorStatusAction} className={styles.inlineActions}>
+                      <input type="hidden" name="id" value={connector.id} />
+                      <select name="status" defaultValue={connector.status} className={styles.inlineSelect}>
+                        <option value="active">active</option>
+                        <option value="paused">paused</option>
+                        <option value="failed">failed</option>
+                        <option value="archived">archived</option>
+                      </select>
+                      <button type="submit" className={styles.inlineButton}>
+                        Save
+                      </button>
+                    </form>
+                  </td>
+                </tr>
+              ))}
+              {activeConnectors.length === 0 ? (
+                <tr>
+                  <td colSpan={6}>No connector configurations yet.</td>
+                </tr>
+              ) : null}
+            </tbody>
+          </table>
+        </div>
+      </Card>
+
+      <Card title="Quality Rules" description="Threshold-driven rule book for automated quality governance.">
+        <div className={styles.tableWrap}>
+          <table className={styles.table}>
+            <thead>
+              <tr>
+                <th>Rule</th>
+                <th>Metric</th>
+                <th>Condition</th>
+                <th>Severity</th>
+                <th>Active</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {activeQualityRules.map((rule) => (
+                <tr key={rule.id}>
+                  <td>{rule.rule_name}</td>
+                  <td>{rule.metric_name}</td>
+                  <td>
+                    {rule.comparator} {Number(rule.threshold).toFixed(2)}
+                  </td>
+                  <td>{rule.severity}</td>
+                  <td>{rule.is_active ? 'Yes' : 'No'}</td>
+                  <td>
+                    <form action={toggleQualityRuleAction}>
+                      <input type="hidden" name="id" value={rule.id} />
+                      <input type="hidden" name="isActive" value={rule.is_active ? '0' : '1'} />
+                      <button type="submit" className={styles.inlineButton}>
+                        {rule.is_active ? 'Disable' : 'Enable'}
+                      </button>
+                    </form>
+                  </td>
+                </tr>
+              ))}
+              {activeQualityRules.length === 0 ? (
+                <tr>
+                  <td colSpan={6}>No quality rules defined yet.</td>
                 </tr>
               ) : null}
             </tbody>

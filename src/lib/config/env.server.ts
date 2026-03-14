@@ -4,6 +4,9 @@ import { clientEnv } from '@/lib/config/env.client';
 
 const serverEnvSchema = z.object({
   SUPABASE_SERVICE_ROLE_KEY: z.string().min(1),
+  OPENAI_API_KEY: z.string().min(1).optional(),
+  OPENAI_MODEL: z.string().min(1).optional(),
+  OPENAI_ASK_AI_MODELS: z.string().min(1).optional(),
   SMTP_HOST: z.string().min(1).optional(),
   SMTP_PORT: z.coerce.number().int().positive().optional(),
   SMTP_SECURE: z.enum(['true', 'false']).optional(),
@@ -14,6 +17,9 @@ const serverEnvSchema = z.object({
 
 const parsedServerEnv = serverEnvSchema.safeParse({
   SUPABASE_SERVICE_ROLE_KEY: process.env.SUPABASE_SERVICE_ROLE_KEY,
+  OPENAI_API_KEY: process.env.OPENAI_API_KEY,
+  OPENAI_MODEL: process.env.OPENAI_MODEL,
+  OPENAI_ASK_AI_MODELS: process.env.OPENAI_ASK_AI_MODELS,
   SMTP_HOST: process.env.SMTP_HOST,
   SMTP_PORT: process.env.SMTP_PORT,
   SMTP_SECURE: process.env.SMTP_SECURE,
@@ -25,6 +31,9 @@ const parsedServerEnv = serverEnvSchema.safeParse({
 export const serverEnv = {
   ...clientEnv,
   SUPABASE_SERVICE_ROLE_KEY: parsedServerEnv.success ? parsedServerEnv.data.SUPABASE_SERVICE_ROLE_KEY : undefined,
+  OPENAI_API_KEY: parsedServerEnv.success ? parsedServerEnv.data.OPENAI_API_KEY : undefined,
+  OPENAI_MODEL: parsedServerEnv.success ? parsedServerEnv.data.OPENAI_MODEL : undefined,
+  OPENAI_ASK_AI_MODELS: parsedServerEnv.success ? parsedServerEnv.data.OPENAI_ASK_AI_MODELS : undefined,
   SMTP_HOST: parsedServerEnv.success ? parsedServerEnv.data.SMTP_HOST : undefined,
   SMTP_PORT: parsedServerEnv.success ? parsedServerEnv.data.SMTP_PORT : undefined,
   SMTP_SECURE: parsedServerEnv.success ? parsedServerEnv.data.SMTP_SECURE : undefined,
@@ -39,6 +48,14 @@ export function requireServiceRoleKey() {
   }
 
   return serverEnv.SUPABASE_SERVICE_ROLE_KEY;
+}
+
+export function requireOpenAiKey() {
+  if (!serverEnv.OPENAI_API_KEY) {
+    throw new Error('OPENAI_API_KEY is required for Ask AI operations.');
+  }
+
+  return serverEnv.OPENAI_API_KEY;
 }
 
 export function requireSmtpConfig() {

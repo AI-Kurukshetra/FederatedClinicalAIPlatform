@@ -15,5 +15,5 @@ export const updateStudySchema = z.object({
 
 export const inviteStudyMemberSchema = z.object({
   userId: z.string().uuid(),
-  role: z.enum(['owner', 'admin', 'researcher', 'analyst', 'member']).default('member'),
+  role: z.enum(['owner', 'editor', 'viewer']).default('viewer'),
 });

@@ -16,9 +16,11 @@
     "db:migration:new": "npx supabase migration new",
     "db:migration:up": "npx supabase migration up",
     "db:push": "npx supabase db push",
+    "db:push:remote": "npx supabase db push --linked",
     "db:pull": "npx supabase db pull",
     "db:reset": "npx supabase db reset",
-    "db:seed": "npx supabase db reset --no-rebuild",
+    "db:seed": "npx supabase db reset --local",
+    "db:seed:remote": "npx supabase db push --include-seed",
     "db:types": "npx supabase gen types typescript --linked > src/types/database.generated.ts"
   },
   "dependencies": {

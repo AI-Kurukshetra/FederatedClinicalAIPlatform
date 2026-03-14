@@ -1,0 +1,257 @@
+.triggerButton {
+  width: 38px;
+  height: 38px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  background: rgba(4, 12, 25, 0.6);
+  color: #ecf5ff;
+  font-size: 1rem;
+  font-weight: 800;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.05);
+  cursor: pointer;
+}
+
+.triggerButton:hover {
+  background: rgba(4, 12, 25, 0.74);
+}
+
+.modalRoot {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: grid;
+  place-items: center;
+  padding: 1rem;
+}
+
+.backdrop {
+  border: 0;
+  margin: 0;
+  padding: 0;
+  position: absolute;
+  inset: 0;
+  background: rgba(6, 14, 28, 0.58);
+  cursor: pointer;
+}
+
+.modal {
+  position: relative;
+  width: min(100%, 700px);
+  max-height: min(88vh, 820px);
+  overflow: auto;
+  border-radius: 20px;
+  border: 1px solid #d7e2ee;
+  background: linear-gradient(180deg, #ffffff 0%, #f8fbff 100%);
+  box-shadow: 0 30px 70px rgba(7, 19, 37, 0.36);
+  padding: 1rem;
+}
+
+.header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.8rem;
+}
+
+.kicker {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: #416688;
+}
+
+.title {
+  margin-top: 0.24rem;
+  font-size: 1.3rem;
+  color: #143455;
+}
+
+.subtitle {
+  margin-top: 0.3rem;
+  color: #5e7a96;
+  font-size: 0.82rem;
+}
+
+.closeButton {
+  width: 32px;
+  height: 32px;
+  border-radius: 10px;
+  border: 1px solid #cfdeef;
+  background: #ffffff;
+  color: #1e4a74;
+  font-size: 0.95rem;
+  cursor: pointer;
+}
+
+.form {
+  margin-top: 0.8rem;
+  display: grid;
+  gap: 0.75rem;
+}
+
+.section {
+  border: 1px solid #d6e2ef;
+  border-radius: 14px;
+  background: #ffffff;
+  padding: 0.8rem;
+  display: grid;
+  gap: 0.6rem;
+}
+
+.section h3 {
+  margin: 0;
+  font-size: 0.94rem;
+  color: #1e4266;
+}
+
+.themeRow {
+  display: flex;
+  gap: 0.45rem;
+  flex-wrap: wrap;
+}
+
+.themeChip {
+  border: 1px solid #cbdcef;
+  border-radius: 999px;
+  background: #f5f9ff;
+  color: #2a4f74;
+  height: 30px;
+  padding: 0 0.75rem;
+  font-size: 0.78rem;
+  text-transform: capitalize;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.themeChipActive {
+  background: #d9ebff;
+  border-color: #96bce4;
+}
+
+.switcherWrap {
+  display: inline-flex;
+  align-items: center;
+}
+
+.grid {
+  display: grid;
+  gap: 0.6rem;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.fieldGroup {
+  display: grid;
+  gap: 0.32rem;
+}
+
+.fieldGroup label {
+  color: #55728f;
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.fieldLabel {
+  color: #55728f;
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.fieldGroup input {
+  height: 36px;
+  border-radius: 10px;
+  border: 1px solid #cad9ea;
+  background: #fbfdff;
+  color: #173a5e;
+  padding: 0 0.62rem;
+  font-size: 0.85rem;
+}
+
+.fieldGroup input:disabled {
+  color: #738ba2;
+  background: #f0f5fb;
+}
+
+.message {
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+
+.success {
+  color: #187447;
+}
+
+.error {
+  color: #ac2932;
+}
+
+.actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+}
+
+.secondaryButton {
+  border: 1px solid #c7d8ea;
+  border-radius: 10px;
+  background: #ffffff;
+  color: #264a6f;
+  min-height: 34px;
+  padding: 0.38rem 0.75rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.primaryButton {
+  border: 1px solid transparent;
+  border-radius: 10px;
+  background: #0c63ca;
+  color: #ffffff;
+  min-height: 34px;
+  padding: 0.38rem 0.8rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.primaryButton:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.footer {
+  margin-top: 0.9rem;
+  border-top: 1px solid #d6e2ef;
+  padding-top: 0.8rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.8rem;
+}
+
+.planChip {
+  border: 1px solid #d4e3f3;
+  border-radius: 999px;
+  background: #eff6ff;
+  color: #365d83;
+  padding: 0.24rem 0.6rem;
+  font-size: 0.74rem;
+  font-weight: 700;
+}
+
+.signOutButton {
+  border: 1px solid #d8a9ad;
+  border-radius: 10px;
+  background: #fff4f5;
+  color: #9b2f37;
+  min-height: 34px;
+  padding: 0.38rem 0.72rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+@media (max-width: 700px) {
+  .grid {
+    grid-template-columns: 1fr;
+  }
+}

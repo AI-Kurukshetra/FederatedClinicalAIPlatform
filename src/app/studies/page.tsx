@@ -170,6 +170,9 @@ export default async function StudiesPage({ searchParams }: StudiesPageProps) {
                 <td>{row.updated}</td>
                 <td>
                   <div className={styles.inlineActions}>
+                    <a href={`/studies/${row.id}/settings`} className={styles.inlineButton}>
+                      Members
+                    </a>
                     <form action={updateStudyStatusAction} className={styles.inlineActions}>
                       <input type="hidden" name="id" value={row.id} />
                       <select name="status" defaultValue={row.status} className={styles.inlineSelect}>

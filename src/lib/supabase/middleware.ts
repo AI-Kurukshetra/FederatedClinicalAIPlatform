@@ -9,6 +9,8 @@ const protectedPrefixes = [
   '/data-sources',
   '/federated-nodes',
   '/analytics',
+  '/ask-ai',
+  '/reports',
   '/clinical-trials',
   '/admin',
 ];

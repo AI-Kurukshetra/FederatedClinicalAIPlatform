@@ -291,3 +291,179 @@ export async function restoreDataQualityMetricAction(formData: FormData) {
   revalidatePath('/analytics');
   redirect('/data-sources?notice=' + encodeMessage('Data quality metric restored.'));
 }
+
+export async function createConnectorConfigAction(formData: FormData) {
+  const supabase = await createServerSupabaseClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) redirect('/login?error=' + encodeMessage('Please sign in first.'));
+
+  const orgContext = await getPrimaryOrgContext(supabase, user.id);
+  if (!orgContext) redirect('/data-sources?error=' + encodeMessage('No organization found for your account.'));
+
+  const name = String(formData.get('name') ?? '').trim();
+  const sourceType = String(formData.get('sourceType') ?? 'ehr').trim();
+  const status = String(formData.get('status') ?? 'active').trim();
+  const scheduleCron = String(formData.get('scheduleCron') ?? '').trim();
+  const configJsonRaw = String(formData.get('configJson') ?? '').trim();
+  const nodeId = String(formData.get('nodeId') ?? '').trim();
+
+  if (!name) redirect('/data-sources?error=' + encodeMessage('Connector name is required.'));
+
+  let configJson: Record<string, unknown> = {};
+  if (configJsonRaw) {
+    try {
+      const parsed = JSON.parse(configJsonRaw);
+      if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) throw new Error();
+      configJson = parsed as Record<string, unknown>;
+    } catch {
+      redirect('/data-sources?error=' + encodeMessage('Connector config JSON must be a valid object.'));
+    }
+  }
+
+  const { data, error } = await supabase
+    .from('connector_configs')
+    .insert({
+      org_id: orgContext.orgId,
+      node_id: nodeId || null,
+      name,
+      source_type: sourceType,
+      status,
+      schedule_cron: scheduleCron || null,
+      config_json: configJson,
+      created_by: user.id,
+    })
+    .select('id')
+    .single();
+
+  if (error) redirect('/data-sources?error=' + encodeMessage(error.message));
+
+  await writeAuditLog({
+    actorId: user.id,
+    action: 'connector_config.created',
+    entity: 'connector_config',
+    entityId: data.id,
+    metadata: { orgId: orgContext.orgId, sourceType, status },
+  });
+
+  revalidatePath('/data-sources');
+  redirect('/data-sources?notice=' + encodeMessage('Connector config created.'));
+}
+
+export async function updateConnectorStatusAction(formData: FormData) {
+  const supabase = await createServerSupabaseClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) redirect('/login?error=' + encodeMessage('Please sign in first.'));
+
+  const id = String(formData.get('id') ?? '').trim();
+  const status = String(formData.get('status') ?? '').trim();
+  if (!id || !status) redirect('/data-sources?error=' + encodeMessage('Missing connector status payload.'));
+
+  const { data, error } = await supabase
+    .from('connector_configs')
+    .update({ status })
+    .eq('id', id)
+    .is('deleted_at', null)
+    .select('id, org_id, status')
+    .single();
+
+  if (error) redirect('/data-sources?error=' + encodeMessage(error.message));
+
+  await writeAuditLog({
+    actorId: user.id,
+    action: 'connector_config.status_updated',
+    entity: 'connector_config',
+    entityId: data.id,
+    metadata: { orgId: data.org_id, status: data.status },
+  });
+
+  revalidatePath('/data-sources');
+  redirect('/data-sources?notice=' + encodeMessage('Connector status updated.'));
+}
+
+export async function createQualityRuleAction(formData: FormData) {
+  const supabase = await createServerSupabaseClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) redirect('/login?error=' + encodeMessage('Please sign in first.'));
+
+  const orgContext = await getPrimaryOrgContext(supabase, user.id);
+  if (!orgContext) redirect('/data-sources?error=' + encodeMessage('No organization found for your account.'));
+
+  const ruleName = String(formData.get('ruleName') ?? '').trim();
+  const metricName = String(formData.get('metricName') ?? '').trim();
+  const thresholdRaw = String(formData.get('threshold') ?? '').trim();
+  const comparator = String(formData.get('comparator') ?? 'gte').trim();
+  const severity = String(formData.get('severity') ?? 'warning').trim();
+  const connectorId = String(formData.get('connectorId') ?? '').trim();
+  const threshold = Number(thresholdRaw);
+
+  if (!ruleName || !metricName || Number.isNaN(threshold)) {
+    redirect('/data-sources?error=' + encodeMessage('Rule name, metric name, and numeric threshold are required.'));
+  }
+
+  const { data, error } = await supabase
+    .from('quality_rules')
+    .insert({
+      org_id: orgContext.orgId,
+      connector_id: connectorId || null,
+      rule_name: ruleName,
+      metric_name: metricName,
+      threshold,
+      comparator,
+      severity,
+      created_by: user.id,
+    })
+    .select('id')
+    .single();
+
+  if (error) redirect('/data-sources?error=' + encodeMessage(error.message));
+
+  await writeAuditLog({
+    actorId: user.id,
+    action: 'quality_rule.created',
+    entity: 'quality_rule',
+    entityId: data.id,
+    metadata: { orgId: orgContext.orgId, metricName, threshold, comparator, severity },
+  });
+
+  revalidatePath('/data-sources');
+  redirect('/data-sources?notice=' + encodeMessage('Quality rule created.'));
+}
+
+export async function toggleQualityRuleAction(formData: FormData) {
+  const supabase = await createServerSupabaseClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) redirect('/login?error=' + encodeMessage('Please sign in first.'));
+
+  const id = String(formData.get('id') ?? '').trim();
+  const isActive = String(formData.get('isActive') ?? '').trim() === '1';
+  if (!id) redirect('/data-sources?error=' + encodeMessage('Missing quality rule id.'));
+
+  const { data, error } = await supabase
+    .from('quality_rules')
+    .update({ is_active: isActive })
+    .eq('id', id)
+    .is('deleted_at', null)
+    .select('id, org_id, is_active')
+    .single();
+
+  if (error) redirect('/data-sources?error=' + encodeMessage(error.message));
+
+  await writeAuditLog({
+    actorId: user.id,
+    action: 'quality_rule.toggled',
+    entity: 'quality_rule',
+    entityId: data.id,
+    metadata: { orgId: data.org_id, isActive: data.is_active },
+  });
+
+  revalidatePath('/data-sources');
+  redirect('/data-sources?notice=' + encodeMessage('Quality rule updated.'));
+}

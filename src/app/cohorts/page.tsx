@@ -112,7 +112,9 @@ export default async function CohortsPage({ searchParams }: CohortsPageProps) {
         </p>
         <div className={styles.actions}>
           <Button>Create Cohort</Button>
-          <Button variant="secondary">Open Builder</Button>
+          <a href="/cohorts?notice=Select+a+cohort+and+open+Builder+from+Actions" className={styles.inlineButton}>
+            Open Builder
+          </a>
           {showArchived ? (
             <a href="/cohorts" className={styles.inlineButton}>
               Hide Archived
@@ -194,12 +196,20 @@ export default async function CohortsPage({ searchParams }: CohortsPageProps) {
                   </span>
                 </td>
                 <td>
-                  <form action={archiveCohortAction}>
-                    <input type="hidden" name="id" value={row.id} />
-                    <button type="submit" className={`${styles.inlineButton} ${styles.inlineDanger}`}>
-                      Archive
-                    </button>
-                  </form>
+                  <div className={styles.inlineActions}>
+                    <a href={`/cohorts/${row.id}`} className={styles.inlineButton}>
+                      View
+                    </a>
+                    <a href={`/cohorts/${row.id}/builder`} className={styles.inlineButton}>
+                      Builder
+                    </a>
+                    <form action={archiveCohortAction}>
+                      <input type="hidden" name="id" value={row.id} />
+                      <button type="submit" className={`${styles.inlineButton} ${styles.inlineDanger}`}>
+                        Archive
+                      </button>
+                    </form>
+                  </div>
                 </td>
               </tr>
             ))}
