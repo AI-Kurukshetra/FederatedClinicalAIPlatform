@@ -1,0 +1,23 @@
+.card {
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-default);
+  background: var(--bg-surface);
+  box-shadow: var(--shadow-soft);
+  padding: 1rem;
+}
+
+.title {
+  margin: 0;
+  font-size: 1rem;
+  color: var(--text-strong);
+}
+
+.description {
+  margin: 0.45rem 0 0;
+  color: var(--text-muted);
+  font-size: 0.9rem;
+}
+
+.body {
+  margin-top: 0.95rem;
+}

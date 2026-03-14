@@ -1,0 +1,64 @@
+:root {
+  color-scheme: light;
+  --bg-canvas: #f3f7fb;
+  --bg-surface: #ffffff;
+  --bg-surface-muted: #f7fafd;
+  --bg-soft: #ebf2fa;
+  --text-strong: #0f223d;
+  --text-body: #304762;
+  --text-muted: #607a97;
+  --border-default: #cfdaea;
+  --brand: #0c63ca;
+  --brand-hover: #0a53a9;
+  --brand-contrast: #ffffff;
+  --status-good: #147a48;
+  --status-warn: #8a5e00;
+  --radius-sm: 10px;
+  --radius-md: 14px;
+  --radius-lg: 22px;
+  --shadow-soft: 0 16px 40px rgba(18, 54, 94, 0.08);
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  min-height: 100%;
+}
+
+body {
+  background: var(--bg-canvas);
+  color: var(--text-body);
+  font-family: "Manrope", "Segoe UI", sans-serif;
+  line-height: 1.45;
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  margin: 0;
+  color: var(--text-strong);
+  line-height: 1.15;
+}
+
+p {
+  margin: 0;
+}
+
+a {
+  color: var(--brand);
+  text-decoration: none;
+}
+
+a:hover {
+  text-decoration: underline;
+}
